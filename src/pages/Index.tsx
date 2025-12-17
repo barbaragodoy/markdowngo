@@ -135,57 +135,57 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Stats/Info Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Upload className="w-5 h-5 text-primary" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 p-3 sm:p-4 bg-card border border-border rounded-xl">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Formatos Suportados</p>
-              <p className="font-semibold text-foreground">Excel, Word, CSV, TXT</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FileCheck className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Saída</p>
-              <p className="font-semibold text-foreground">Markdown Padrão</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-muted-foreground">Formatos Suportados</p>
+              <p className="font-semibold text-foreground text-sm sm:text-base truncate">Excel, Word, CSV, TXT</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
+          <div className="flex items-center gap-3 p-3 sm:p-4 bg-card border border-border rounded-xl">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileCheck className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Limitação</p>
-              <p className="font-semibold text-foreground">PDFs escaneados</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-muted-foreground">Saída</p>
+              <p className="font-semibold text-foreground text-sm sm:text-base">Markdown Padrão</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-3 sm:p-4 bg-card border border-border rounded-xl">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-muted-foreground">Limitação</p>
+              <p className="font-semibold text-foreground text-sm sm:text-base">PDFs escaneados</p>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {/* Left Panel - Input */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <Tabs value={inputTab} onValueChange={setInputTab}>
-              <TabsList className="grid w-full grid-cols-2 h-12">
-                <TabsTrigger value="file" className="gap-2 text-sm">
-                  <Upload className="w-4 h-4" />
-                  Upload de Arquivo
+              <TabsList className="grid w-full grid-cols-2 h-10 sm:h-12">
+                <TabsTrigger value="file" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4">
+                  <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="truncate">Upload</span>
                 </TabsTrigger>
-                <TabsTrigger value="binary" className="gap-2 text-sm">
-                  <Binary className="w-4 h-4" />
-                  Entrada Manual
+                <TabsTrigger value="binary" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4">
+                  <Binary className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="truncate">Manual</span>
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="file" className="mt-4">
+              <TabsContent value="file" className="mt-3 sm:mt-4">
                 <FileUpload
                   onFileSelect={handleFileSelect}
                   isProcessing={isProcessing}
@@ -194,7 +194,7 @@ const Index = () => {
                 />
               </TabsContent>
 
-              <TabsContent value="binary" className="mt-4">
+              <TabsContent value="binary" className="mt-3 sm:mt-4">
                 <BinaryInput onConvert={handleBinaryConvert} isProcessing={isProcessing} />
               </TabsContent>
             </Tabs>
@@ -204,14 +204,14 @@ const Index = () => {
           </div>
 
           {/* Right Panel - Preview */}
-          <div className="lg:min-h-[600px]">
+          <div className="min-h-[400px] lg:min-h-[600px]">
             <MarkdownPreview markdown={markdown} isLoading={isProcessing} />
           </div>
         </div>
 
         {/* Footer Info */}
-        <div className="mt-12 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="mt-8 sm:mt-12 text-center">
+          <p className="text-xs sm:text-sm text-muted-foreground px-4">
             Compatível com GitHub, Notion, Obsidian e outros editores Markdown
           </p>
         </div>

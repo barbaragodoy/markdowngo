@@ -63,37 +63,37 @@ export function MarkdownPreview({ markdown, isLoading }: MarkdownPreviewProps) {
   return (
     <div className="h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden">
       {/* Header with actions */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-          <TabsList className="h-9">
-            <TabsTrigger value="preview" className="gap-2 text-sm px-3">
-              <Eye className="w-4 h-4" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 gap-3 sm:gap-4 border-b border-border bg-card">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+          <TabsList className="h-9 w-full sm:w-auto grid grid-cols-2 sm:flex">
+            <TabsTrigger value="preview" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Preview
             </TabsTrigger>
-            <TabsTrigger value="code" className="gap-2 text-sm px-3">
-              <Code className="w-4 h-4" />
+            <TabsTrigger value="code" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+              <Code className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Markdown
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={handleCopy}
             disabled={!markdown || isLoading}
-            className="gap-2"
+            className="gap-1.5 sm:gap-2 flex-1 sm:flex-none text-xs sm:text-sm h-9"
           >
             {copied ? (
               <>
-                <CheckCircle className="w-4 h-4 text-primary" />
-                Copiado
+                <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                <span className="hidden xs:inline">Copiado</span>
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4" />
-                Copiar
+                <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Copiar</span>
               </>
             )}
           </Button>
@@ -102,10 +102,11 @@ export function MarkdownPreview({ markdown, isLoading }: MarkdownPreviewProps) {
             size="sm"
             onClick={handleDownload}
             disabled={!markdown || isLoading}
-            className="gap-2"
+            className="gap-1.5 sm:gap-2 flex-1 sm:flex-none text-xs sm:text-sm h-9"
           >
-            <Download className="w-4 h-4" />
-            Download .md
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline">Download</span>
+            <span className="xs:hidden">.md</span>
           </Button>
         </div>
       </div>
@@ -113,16 +114,16 @@ export function MarkdownPreview({ markdown, isLoading }: MarkdownPreviewProps) {
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {isLoading ? (
-          <div className="h-full flex items-center justify-center">
+          <div className="h-full flex items-center justify-center min-h-[200px]">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-muted-foreground">Convertendo...</p>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs sm:text-sm text-muted-foreground">Convertendo...</p>
             </div>
           </div>
         ) : (
           <>
-            <div className={cn('h-full p-6', activeTab !== 'preview' && 'hidden')}>
-              <div className="markdown-preview">
+            <div className={cn('h-full p-4 sm:p-6', activeTab !== 'preview' && 'hidden')}>
+              <div className="markdown-preview text-sm sm:text-base">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {markdown}
                 </ReactMarkdown>
@@ -130,7 +131,7 @@ export function MarkdownPreview({ markdown, isLoading }: MarkdownPreviewProps) {
             </div>
             
             <div className={cn('h-full', activeTab !== 'code' && 'hidden')}>
-              <pre className="h-full p-6 overflow-auto text-sm font-mono bg-muted/50">
+              <pre className="h-full p-4 sm:p-6 overflow-auto text-xs sm:text-sm font-mono bg-muted/50">
                 <code className="text-foreground whitespace-pre-wrap break-words">
                   {markdown}
                 </code>

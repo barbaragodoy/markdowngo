@@ -37,33 +37,33 @@ export function ConversionLogs({ logs, onClear }: ConversionLogsProps) {
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-        <h3 className="font-medium text-sm text-foreground">Logs de Conversão</h3>
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border bg-muted/30">
+        <h3 className="font-medium text-xs sm:text-sm text-foreground">Logs de Conversão</h3>
         <Button
           variant="ghost"
           size="sm"
           onClick={onClear}
-          className="h-8 px-2 text-muted-foreground hover:text-foreground"
+          className="h-7 sm:h-8 px-1.5 sm:px-2 text-muted-foreground hover:text-foreground"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </Button>
       </div>
       
-      <div className="max-h-[200px] overflow-y-auto p-2 space-y-1">
+      <div className="max-h-[150px] sm:max-h-[200px] overflow-y-auto p-1.5 sm:p-2 space-y-1">
         {logs.map((log) => {
           const Icon = logIcons[log.type];
           return (
             <div
               key={log.id}
               className={cn(
-                'flex items-start gap-3 p-3 rounded-lg border animate-fade-in',
+                'flex items-start gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border animate-fade-in',
                 logStyles[log.type]
               )}
             >
-              <Icon className={cn('w-4 h-4 mt-0.5 flex-shrink-0', logIconStyles[log.type])} />
+              <Icon className={cn('w-3.5 h-3.5 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0', logIconStyles[log.type])} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{log.message}</p>
-                <p className="text-xs opacity-70 mt-0.5">
+                <p className="text-xs sm:text-sm font-medium break-words">{log.message}</p>
+                <p className="text-[10px] sm:text-xs opacity-70 mt-0.5">
                   {log.timestamp.toLocaleTimeString('pt-BR')}
                 </p>
               </div>
