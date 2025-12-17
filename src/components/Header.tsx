@@ -2,15 +2,28 @@ import logo from '@/assets/logo.svg';
 
 export function Header() {
   return (
-    <header className="bg-primary text-primary-foreground shadow-medium">
-      <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <img src={logo} alt="Logo" className="h-10 sm:h-12 w-auto" />
-          <div className="min-w-0">
-            <h1 className="text-base sm:text-xl font-bold tracking-tight truncate">Universal Markdown Converter</h1>
-            <p className="text-xs sm:text-sm text-primary-foreground/80 truncate">
-              Converta arquivos para Markdown
-            </p>
+    <header className="shadow-medium">
+      {/* Barra superior verde */}
+      <div className="bg-primary text-primary-foreground">
+        <div className="container mx-auto px-3 sm:px-4 py-1.5 sm:py-2">
+          <span className="text-xs sm:text-sm font-semibold tracking-wide">GOIAS.GOV.BR</span>
+        </div>
+      </div>
+      
+      {/* Seção principal com fundo branco */}
+      <div className="bg-white">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <img src={logo} alt="Governo de Goiás" className="h-12 sm:h-14 w-auto" />
+            <div className="h-10 w-px bg-primary/30 hidden sm:block" />
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-lg font-bold text-primary tracking-tight truncate">
+                Universal Markdown Converter
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                Converta arquivos para Markdown
+              </p>
+            </div>
           </div>
         </div>
       </div>
