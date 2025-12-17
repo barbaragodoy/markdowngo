@@ -31,57 +31,57 @@ export function BinaryInput({ onConvert, isProcessing }: BinaryInputProps) {
   };
 
   return (
-    <div className="space-y-4 p-6 bg-card border border-border rounded-xl">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Binary className="w-5 h-5 text-primary" />
+    <div className="space-y-3 sm:space-y-4 p-4 sm:p-6 bg-card border border-border rounded-xl">
+      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <Binary className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
         </div>
-        <div>
-          <h3 className="font-semibold text-foreground">Entrada Manual</h3>
-          <p className="text-sm text-muted-foreground">Cole dados Base64 ou texto bruto</p>
+        <div className="min-w-0">
+          <h3 className="font-semibold text-foreground text-sm sm:text-base">Entrada Manual</h3>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">Cole dados Base64 ou texto bruto</p>
         </div>
       </div>
 
       <Tabs value={inputType} onValueChange={(v) => setInputType(v as 'base64' | 'raw')}>
-        <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="base64" className="gap-2">
-            <FileCode className="w-4 h-4" />
+        <TabsList className="grid w-full grid-cols-2 mb-3 sm:mb-4 h-9 sm:h-10">
+          <TabsTrigger value="base64" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
+            <FileCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             Base64
           </TabsTrigger>
-          <TabsTrigger value="raw" className="gap-2">
-            <Binary className="w-4 h-4" />
+          <TabsTrigger value="raw" className="gap-1.5 sm:gap-2 text-xs sm:text-sm">
+            <Binary className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             Texto Bruto
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="base64" className="space-y-4">
+        <TabsContent value="base64" className="space-y-3 sm:space-y-4">
           <Textarea
-            placeholder="Cole aqui o conteúdo em Base64...&#10;&#10;Exemplo: SGVsbG8gV29ybGQh"
+            placeholder="Cole aqui o conteúdo em Base64..."
             value={data}
             onChange={(e) => setData(e.target.value)}
-            className="min-h-[120px] font-mono text-sm resize-none"
+            className="min-h-[100px] sm:min-h-[120px] font-mono text-xs sm:text-sm resize-none"
             disabled={isProcessing}
           />
         </TabsContent>
 
-        <TabsContent value="raw" className="space-y-4">
+        <TabsContent value="raw" className="space-y-3 sm:space-y-4">
           <Textarea
-            placeholder="Cole aqui o texto bruto para converter em Markdown..."
+            placeholder="Cole aqui o texto bruto para converter..."
             value={data}
             onChange={(e) => setData(e.target.value)}
-            className="min-h-[120px] resize-none"
+            className="min-h-[100px] sm:min-h-[120px] text-sm resize-none"
             disabled={isProcessing}
           />
         </TabsContent>
       </Tabs>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
         <div className="flex-1">
-          <label className="text-sm font-medium text-foreground mb-2 block">
+          <label className="text-xs sm:text-sm font-medium text-foreground mb-1.5 sm:mb-2 block">
             Tipo de Origem
           </label>
           <Select value={sourceType} onValueChange={setSourceType} disabled={isProcessing}>
-            <SelectTrigger>
+            <SelectTrigger className="h-9 sm:h-10 text-sm">
               <SelectValue placeholder="Selecione o tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -98,11 +98,11 @@ export function BinaryInput({ onConvert, isProcessing }: BinaryInputProps) {
           onClick={handleSubmit}
           disabled={!data.trim() || isProcessing}
           className={cn(
-            'self-end h-10 gap-2',
+            'h-9 sm:h-10 gap-1.5 sm:gap-2 w-full sm:w-auto text-sm',
             isProcessing && 'animate-pulse'
           )}
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           Converter
         </Button>
       </div>
