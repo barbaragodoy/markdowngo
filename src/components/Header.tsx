@@ -18,7 +18,7 @@ export function Header() {
             <div className="h-10 w-px bg-primary/30 hidden sm:block" />
             <div className="min-w-0">
               <h1 className="text-sm sm:text-lg font-bold text-primary tracking-tight truncate">
-                Universal Markdown Converter
+                Goias Markdown
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 Converta arquivos para Markdown
