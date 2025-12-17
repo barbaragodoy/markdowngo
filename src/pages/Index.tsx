@@ -176,7 +176,7 @@ const Index = () => {
             </div>
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-muted-foreground">Formatos Suportados</p>
-              <p className="font-semibold text-foreground text-sm sm:text-base truncate">Excel, Word, CSV, TXT</p>
+              <p className="font-semibold text-foreground text-sm sm:text-base truncate">PDF, Excel, Word, CSV, TXT</p>
             </div>
           </div>
           
