@@ -66,22 +66,24 @@ export async function convertToMarkdown(
       case 'txt':
         return await convertTxtToMarkdown(file, onLog);
       case 'pdf':
+        onLog({ type: 'error', message: 'Conversão de PDF ainda não implementada no navegador' });
         return {
           success: false,
           markdown: '',
-          error: 'Conversão de PDF requer processamento no servidor. Por favor, use a entrada de dados binários/Base64 para PDFs.',
+          error: 'Conversão de PDF requer processamento especial. Por favor, use a entrada de dados binários/Base64 para PDFs.',
           warnings: ['PDFs escaneados podem ter limitações na extração de texto.']
         };
       default:
+        onLog({ type: 'error', message: `Formato não suportado: .${file.name.split('.').pop()}` });
         return {
           success: false,
           markdown: '',
-          error: `Formato de arquivo não suportado: .${file.name.split('.').pop()}`
+          error: `Formato de arquivo não suportado: .${file.name.split('.').pop()}. Formatos aceitos: Excel (.xlsx, .xls), Word (.docx), CSV (.csv), TXT (.txt).`
         };
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-    onLog({ type: 'error', message: `Erro ao processar arquivo: ${errorMessage}` });
+    const errorMessage = translateError(error);
+    onLog({ type: 'error', message: errorMessage });
     return {
       success: false,
       markdown: '',
@@ -90,68 +92,125 @@ export async function convertToMarkdown(
   }
 }
 
+function translateError(error: unknown): string {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    
+    // Erros comuns de leitura de arquivo
+    if (msg.includes('failed to fetch') || msg.includes('network')) {
+      return 'Erro de conexão. Verifique sua internet e tente novamente.';
+    }
+    if (msg.includes('not found') || msg.includes('404')) {
+      return 'Arquivo não encontrado.';
+    }
+    if (msg.includes('permission') || msg.includes('access denied')) {
+      return 'Sem permissão para acessar o arquivo.';
+    }
+    if (msg.includes('corrupt') || msg.includes('invalid')) {
+      return 'Arquivo corrompido ou em formato inválido.';
+    }
+    if (msg.includes('too large') || msg.includes('size')) {
+      return 'Arquivo muito grande para processar.';
+    }
+    if (msg.includes('timeout')) {
+      return 'Tempo limite excedido. Tente com um arquivo menor.';
+    }
+    if (msg.includes('memory') || msg.includes('heap')) {
+      return 'Memória insuficiente para processar o arquivo.';
+    }
+    if (msg.includes('encoding') || msg.includes('charset')) {
+      return 'Erro de codificação. O arquivo pode usar caracteres não suportados.';
+    }
+    
+    // Retorna a mensagem original se não for reconhecida
+    return `Erro ao processar: ${error.message}`;
+  }
+  
+  return 'Ocorreu um erro desconhecido durante o processamento.';
+}
+
 async function convertExcelToMarkdown(
   file: File,
   onLog: (log: Omit<ConversionLog, 'id' | 'timestamp'>) => void
 ): Promise<ConversionResult> {
   onLog({ type: 'info', message: 'Lendo arquivo Excel...' });
   
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-  
-  let markdown = `# ${file.name.replace(/\.(xlsx|xls)$/i, '')}\n\n`;
-  markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
-  
-  const warnings: string[] = [];
-  
-  workbook.SheetNames.forEach((sheetName, index) => {
-    onLog({ type: 'info', message: `Processando aba: ${sheetName}` });
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
     
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
-    
-    if (jsonData.length === 0) {
-      warnings.push(`Aba "${sheetName}" está vazia`);
-      return;
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      onLog({ type: 'error', message: 'Arquivo Excel não contém planilhas' });
+      return {
+        success: false,
+        markdown: '',
+        error: 'O arquivo Excel não contém nenhuma planilha válida.'
+      };
     }
     
-    // Add section header for each sheet
-    markdown += `## ${sheetName}\n\n`;
+    let markdown = `# ${file.name.replace(/\.(xlsx|xls)$/i, '')}\n\n`;
+    markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
     
-    // Convert to markdown table
-    const headers = jsonData[0] as string[];
-    if (headers && headers.length > 0) {
-      // Header row
-      markdown += '| ' + headers.map(h => String(h || '').trim() || '-').join(' | ') + ' |\n';
-      // Separator row
-      markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+    const warnings: string[] = [];
+    
+    workbook.SheetNames.forEach((sheetName, index) => {
+      onLog({ type: 'info', message: `Processando aba: ${sheetName}` });
       
-      // Data rows
-      for (let i = 1; i < jsonData.length; i++) {
-        const row = jsonData[i];
-        if (row && row.length > 0) {
-          const cells = headers.map((_, colIndex) => {
-            const cell = row[colIndex];
-            return String(cell ?? '').trim() || '-';
-          });
-          markdown += '| ' + cells.join(' | ') + ' |\n';
-        }
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+      
+      if (jsonData.length === 0) {
+        warnings.push(`Aba "${sheetName}" está vazia`);
+        onLog({ type: 'warning', message: `Aba "${sheetName}" está vazia e foi ignorada` });
+        return;
       }
-      markdown += '\n';
-    }
+      
+      // Add section header for each sheet
+      markdown += `## ${sheetName}\n\n`;
+      
+      // Convert to markdown table
+      const headers = jsonData[0] as string[];
+      if (headers && headers.length > 0) {
+        // Header row
+        markdown += '| ' + headers.map(h => String(h || '').trim() || '-').join(' | ') + ' |\n';
+        // Separator row
+        markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+        
+        // Data rows
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          if (row && row.length > 0) {
+            const cells = headers.map((_, colIndex) => {
+              const cell = row[colIndex];
+              return String(cell ?? '').trim() || '-';
+            });
+            markdown += '| ' + cells.join(' | ') + ' |\n';
+          }
+        }
+        markdown += '\n';
+      }
+      
+      if (index < workbook.SheetNames.length - 1) {
+        markdown += '---\n\n';
+      }
+    });
     
-    if (index < workbook.SheetNames.length - 1) {
-      markdown += '---\n\n';
-    }
-  });
-  
-  onLog({ type: 'success', message: `Convertidas ${workbook.SheetNames.length} aba(s) com sucesso` });
-  
-  return {
-    success: true,
-    markdown,
-    warnings: warnings.length > 0 ? warnings : undefined
-  };
+    onLog({ type: 'success', message: `Convertidas ${workbook.SheetNames.length} aba(s) com sucesso` });
+    
+    return {
+      success: true,
+      markdown,
+      warnings: warnings.length > 0 ? warnings : undefined
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    onLog({ type: 'error', message: `Falha ao ler arquivo Excel: ${errorMessage}` });
+    return {
+      success: false,
+      markdown: '',
+      error: 'Não foi possível ler o arquivo Excel. Verifique se o arquivo não está corrompido ou protegido por senha.'
+    };
+  }
 }
 
 async function convertWordToMarkdown(
@@ -160,32 +219,64 @@ async function convertWordToMarkdown(
 ): Promise<ConversionResult> {
   onLog({ type: 'info', message: 'Lendo documento Word...' });
   
-  const arrayBuffer = await file.arrayBuffer();
-  
-  // Convert to HTML first, then transform to markdown
-  const result = await mammoth.convertToHtml({ arrayBuffer });
-  
-  let markdown = `# ${file.name.replace(/\.docx$/i, '')}\n\n`;
-  markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
-  
-  // Convert HTML to Markdown
-  markdown += htmlToMarkdown(result.value);
-  
-  const warnings = result.messages
-    .filter(m => m.type === 'warning')
-    .map(m => m.message);
-  
-  if (warnings.length > 0) {
-    onLog({ type: 'warning', message: `${warnings.length} aviso(s) durante a conversão` });
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Convert to HTML first, then transform to markdown
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    
+    if (!result.value || result.value.trim().length === 0) {
+      onLog({ type: 'warning', message: 'Documento Word está vazio ou contém apenas imagens' });
+      return {
+        success: false,
+        markdown: '',
+        error: 'O documento Word está vazio ou contém apenas elementos não suportados (como imagens).'
+      };
+    }
+    
+    let markdown = `# ${file.name.replace(/\.docx$/i, '')}\n\n`;
+    markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
+    
+    // Convert HTML to Markdown
+    markdown += htmlToMarkdown(result.value);
+    
+    const warnings = result.messages
+      .filter(m => m.type === 'warning')
+      .map(m => traduzirAvisoMammoth(m.message));
+    
+    if (warnings.length > 0) {
+      onLog({ type: 'warning', message: `${warnings.length} aviso(s) durante a conversão` });
+    }
+    
+    onLog({ type: 'success', message: 'Documento Word convertido com sucesso' });
+    
+    return {
+      success: true,
+      markdown,
+      warnings: warnings.length > 0 ? warnings : undefined
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    onLog({ type: 'error', message: `Falha ao ler documento Word: ${errorMessage}` });
+    return {
+      success: false,
+      markdown: '',
+      error: 'Não foi possível ler o documento Word. Verifique se o arquivo é um .docx válido e não está corrompido.'
+    };
   }
-  
-  onLog({ type: 'success', message: 'Documento Word convertido com sucesso' });
-  
-  return {
-    success: true,
-    markdown,
-    warnings: warnings.length > 0 ? warnings : undefined
-  };
+}
+
+function traduzirAvisoMammoth(message: string): string {
+  if (message.includes('unrecognised element')) {
+    return 'Elemento não reconhecido foi ignorado';
+  }
+  if (message.includes('image')) {
+    return 'Imagens foram ignoradas na conversão';
+  }
+  if (message.includes('style')) {
+    return 'Alguns estilos não foram preservados';
+  }
+  return message;
 }
 
 function htmlToMarkdown(html: string): string {
@@ -245,57 +336,72 @@ async function convertCsvToMarkdown(
 ): Promise<ConversionResult> {
   onLog({ type: 'info', message: 'Lendo arquivo CSV...' });
   
-  const text = await file.text();
-  const lines = text.split('\n').filter(line => line.trim());
-  
-  if (lines.length === 0) {
+  try {
+    const text = await file.text();
+    const lines = text.split('\n').filter(line => line.trim());
+    
+    if (lines.length === 0) {
+      onLog({ type: 'error', message: 'Arquivo CSV está vazio' });
+      return {
+        success: false,
+        markdown: '',
+        error: 'O arquivo CSV está vazio ou não contém dados válidos.'
+      };
+    }
+    
+    if (lines.length === 1) {
+      onLog({ type: 'warning', message: 'CSV contém apenas cabeçalho, sem dados' });
+    }
+    
+    let markdown = `# ${file.name.replace(/\.csv$/i, '')}\n\n`;
+    markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
+    
+    // Parse CSV (simple parser, handles basic cases)
+    const rows = lines.map(line => {
+      const cells: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          cells.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      cells.push(current.trim());
+      return cells;
+    });
+    
+    // Header
+    const headers = rows[0];
+    markdown += '| ' + headers.map(h => h || '-').join(' | ') + ' |\n';
+    markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
+    
+    // Data rows
+    for (let i = 1; i < rows.length; i++) {
+      const cells = headers.map((_, colIndex) => rows[i][colIndex] || '-');
+      markdown += '| ' + cells.join(' | ') + ' |\n';
+    }
+    
+    onLog({ type: 'success', message: `Convertidas ${rows.length - 1} linha(s) com sucesso` });
+    
+    return {
+      success: true,
+      markdown
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    onLog({ type: 'error', message: `Falha ao processar CSV: ${errorMessage}` });
     return {
       success: false,
       markdown: '',
-      error: 'Arquivo CSV está vazio'
+      error: 'Não foi possível processar o arquivo CSV. Verifique se o formato está correto.'
     };
   }
-  
-  let markdown = `# ${file.name.replace(/\.csv$/i, '')}\n\n`;
-  markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
-  
-  // Parse CSV (simple parser, handles basic cases)
-  const rows = lines.map(line => {
-    const cells: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (const char of line) {
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        cells.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    cells.push(current.trim());
-    return cells;
-  });
-  
-  // Header
-  const headers = rows[0];
-  markdown += '| ' + headers.map(h => h || '-').join(' | ') + ' |\n';
-  markdown += '| ' + headers.map(() => '---').join(' | ') + ' |\n';
-  
-  // Data rows
-  for (let i = 1; i < rows.length; i++) {
-    const cells = headers.map((_, colIndex) => rows[i][colIndex] || '-');
-    markdown += '| ' + cells.join(' | ') + ' |\n';
-  }
-  
-  onLog({ type: 'success', message: `Convertidas ${rows.length - 1} linhas com sucesso` });
-  
-  return {
-    success: true,
-    markdown
-  };
 }
 
 async function convertTxtToMarkdown(
@@ -304,40 +410,59 @@ async function convertTxtToMarkdown(
 ): Promise<ConversionResult> {
   onLog({ type: 'info', message: 'Lendo arquivo de texto...' });
   
-  const text = await file.text();
-  
-  let markdown = `# ${file.name.replace(/\.txt$/i, '')}\n\n`;
-  markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
-  
-  // Process text - detect potential structure
-  const lines = text.split('\n');
-  let processedText = '';
-  
-  lines.forEach(line => {
-    const trimmed = line.trim();
+  try {
+    const text = await file.text();
     
-    // Detect potential headers (ALL CAPS or numbered sections)
-    if (trimmed && trimmed === trimmed.toUpperCase() && trimmed.length < 100 && !/^\d+\.\s/.test(trimmed)) {
-      processedText += `\n## ${trimmed}\n\n`;
-    } else if (/^\d+\.\s/.test(trimmed)) {
-      // Numbered items become list items
-      processedText += `${trimmed}\n`;
-    } else if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
-      // Already list items
-      processedText += `- ${trimmed.slice(1).trim()}\n`;
-    } else if (trimmed) {
-      processedText += `${trimmed}\n\n`;
+    if (!text || text.trim().length === 0) {
+      onLog({ type: 'error', message: 'Arquivo de texto está vazio' });
+      return {
+        success: false,
+        markdown: '',
+        error: 'O arquivo de texto está vazio.'
+      };
     }
-  });
-  
-  markdown += processedText;
-  
-  onLog({ type: 'success', message: 'Arquivo de texto convertido com sucesso' });
-  
-  return {
-    success: true,
-    markdown
-  };
+    
+    let markdown = `# ${file.name.replace(/\.txt$/i, '')}\n\n`;
+    markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
+    
+    // Process text - detect potential structure
+    const lines = text.split('\n');
+    let processedText = '';
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      
+      // Detect potential headers (ALL CAPS or numbered sections)
+      if (trimmed && trimmed === trimmed.toUpperCase() && trimmed.length < 100 && !/^\d+\.\s/.test(trimmed)) {
+        processedText += `\n## ${trimmed}\n\n`;
+      } else if (/^\d+\.\s/.test(trimmed)) {
+        // Numbered items become list items
+        processedText += `${trimmed}\n`;
+      } else if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
+        // Already list items
+        processedText += `- ${trimmed.slice(1).trim()}\n`;
+      } else if (trimmed) {
+        processedText += `${trimmed}\n\n`;
+      }
+    });
+    
+    markdown += processedText;
+    
+    onLog({ type: 'success', message: 'Arquivo de texto convertido com sucesso' });
+    
+    return {
+      success: true,
+      markdown
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    onLog({ type: 'error', message: `Falha ao ler arquivo de texto: ${errorMessage}` });
+    return {
+      success: false,
+      markdown: '',
+      error: 'Não foi possível ler o arquivo de texto. Verifique a codificação do arquivo.'
+    };
+  }
 }
 
 export function convertBase64ToMarkdown(
@@ -347,9 +472,28 @@ export function convertBase64ToMarkdown(
 ): ConversionResult {
   onLog({ type: 'info', message: `Processando dados Base64 como ${sourceType}...` });
   
+  if (!base64 || base64.trim().length === 0) {
+    onLog({ type: 'error', message: 'Nenhum dado Base64 fornecido' });
+    return {
+      success: false,
+      markdown: '',
+      error: 'Por favor, insira os dados em Base64 para converter.'
+    };
+  }
+  
   try {
     // Clean the base64 string
     const cleanBase64 = base64.replace(/^data:[^;]+;base64,/, '').trim();
+    
+    // Validate base64 format
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
+      onLog({ type: 'error', message: 'Formato Base64 inválido detectado' });
+      return {
+        success: false,
+        markdown: '',
+        error: 'O texto fornecido não é um Base64 válido. Verifique se os dados estão corretos.'
+      };
+    }
     
     // Decode base64 to text
     const decoded = atob(cleanBase64);
@@ -385,13 +529,24 @@ export function convertBase64ToMarkdown(
       markdown
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erro ao decodificar Base64';
+    let errorMessage = 'Erro ao decodificar Base64';
+    
+    if (error instanceof DOMException && error.name === 'InvalidCharacterError') {
+      errorMessage = 'Caracteres inválidos no Base64. O texto pode estar corrompido.';
+    } else if (error instanceof Error) {
+      if (error.message.includes('atob')) {
+        errorMessage = 'Falha na decodificação. Verifique se o Base64 está completo e correto.';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     onLog({ type: 'error', message: errorMessage });
     
     return {
       success: false,
       markdown: '',
-      error: 'Não foi possível decodificar os dados. Verifique se o formato Base64 está correto.'
+      error: errorMessage
     };
   }
 }
@@ -402,29 +557,48 @@ export function convertRawTextToMarkdown(
 ): ConversionResult {
   onLog({ type: 'info', message: 'Processando texto bruto...' });
   
-  let markdown = `# Texto Convertido\n\n`;
-  markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
-  markdown += '---\n\n';
+  if (!text || text.trim().length === 0) {
+    onLog({ type: 'error', message: 'Nenhum texto fornecido' });
+    return {
+      success: false,
+      markdown: '',
+      error: 'Por favor, insira algum texto para converter.'
+    };
+  }
   
-  // Process the text with basic formatting
-  const lines = text.split('\n');
-  let processed = '';
-  
-  lines.forEach(line => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      processed += '\n';
-    } else {
-      processed += trimmed + '\n';
-    }
-  });
-  
-  markdown += processed;
-  
-  onLog({ type: 'success', message: 'Texto convertido com sucesso' });
-  
-  return {
-    success: true,
-    markdown
-  };
+  try {
+    let markdown = `# Texto Convertido\n\n`;
+    markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n\n`;
+    markdown += '---\n\n';
+    
+    // Process the text with basic formatting
+    const lines = text.split('\n');
+    let processed = '';
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        processed += '\n';
+      } else {
+        processed += trimmed + '\n';
+      }
+    });
+    
+    markdown += processed;
+    
+    onLog({ type: 'success', message: 'Texto convertido com sucesso' });
+    
+    return {
+      success: true,
+      markdown
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    onLog({ type: 'error', message: `Falha ao processar texto: ${errorMessage}` });
+    return {
+      success: false,
+      markdown: '',
+      error: 'Não foi possível processar o texto fornecido.'
+    };
+  }
 }
