@@ -1,5 +1,9 @@
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export type FileType = 'xlsx' | 'xls' | 'docx' | 'pdf' | 'csv' | 'txt' | 'binary' | 'unknown';
 
@@ -66,13 +70,7 @@ export async function convertToMarkdown(
       case 'txt':
         return await convertTxtToMarkdown(file, onLog);
       case 'pdf':
-        onLog({ type: 'error', message: 'Conversão de PDF ainda não implementada no navegador' });
-        return {
-          success: false,
-          markdown: '',
-          error: 'Conversão de PDF requer processamento especial. Por favor, use a entrada de dados binários/Base64 para PDFs.',
-          warnings: ['PDFs escaneados podem ter limitações na extração de texto.']
-        };
+        return await convertPdfToMarkdown(file, onLog);
       default:
         onLog({ type: 'error', message: `Formato não suportado: .${file.name.split('.').pop()}` });
         return {
@@ -264,6 +262,125 @@ async function convertWordToMarkdown(
       error: 'Não foi possível ler o documento Word. Verifique se o arquivo é um .docx válido e não está corrompido.'
     };
   }
+}
+
+async function convertPdfToMarkdown(
+  file: File,
+  onLog: (log: Omit<ConversionLog, 'id' | 'timestamp'>) => void
+): Promise<ConversionResult> {
+  onLog({ type: 'info', message: 'Lendo arquivo PDF...' });
+  
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    const totalPages = pdf.numPages;
+    onLog({ type: 'info', message: `PDF contém ${totalPages} página(s)` });
+    
+    let markdown = `# ${file.name.replace(/\.pdf$/i, '')}\n\n`;
+    markdown += `> Convertido em ${new Date().toLocaleString('pt-BR')}\n`;
+    markdown += `> Total de páginas: ${totalPages}\n\n`;
+    
+    const warnings: string[] = [];
+    let totalTextLength = 0;
+    
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      onLog({ type: 'info', message: `Processando página ${pageNum} de ${totalPages}...` });
+      
+      try {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        const pageText = textContent.items
+          .map((item: any) => {
+            if ('str' in item) {
+              return item.str;
+            }
+            return '';
+          })
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        if (pageText.length > 0) {
+          totalTextLength += pageText.length;
+          markdown += `## Página ${pageNum}\n\n`;
+          
+          // Process text to detect structure
+          const processedText = processTextStructure(pageText);
+          markdown += processedText + '\n\n';
+          
+          if (pageNum < totalPages) {
+            markdown += '---\n\n';
+          }
+        } else {
+          warnings.push(`Página ${pageNum} não contém texto extraível (pode ser uma imagem ou escaneado)`);
+          onLog({ type: 'warning', message: `Página ${pageNum}: sem texto extraível` });
+        }
+      } catch (pageError) {
+        warnings.push(`Erro ao processar página ${pageNum}`);
+        onLog({ type: 'warning', message: `Erro na página ${pageNum}: ${pageError instanceof Error ? pageError.message : 'erro desconhecido'}` });
+      }
+    }
+    
+    if (totalTextLength === 0) {
+      onLog({ type: 'error', message: 'Nenhum texto extraído do PDF' });
+      return {
+        success: false,
+        markdown: '',
+        error: 'Não foi possível extrair texto do PDF. O documento pode ser um PDF escaneado (imagem) ou estar protegido.',
+        warnings: ['PDFs escaneados requerem OCR para extração de texto, funcionalidade não disponível no navegador.']
+      };
+    }
+    
+    onLog({ type: 'success', message: `PDF convertido com sucesso (${totalPages} página(s), ${totalTextLength} caracteres)` });
+    
+    return {
+      success: true,
+      markdown,
+      warnings: warnings.length > 0 ? warnings : undefined
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    onLog({ type: 'error', message: `Falha ao processar PDF: ${errorMessage}` });
+    return {
+      success: false,
+      markdown: '',
+      error: 'Não foi possível ler o arquivo PDF. Verifique se o arquivo não está corrompido ou protegido por senha.'
+    };
+  }
+}
+
+function processTextStructure(text: string): string {
+  // Split into sentences/paragraphs
+  const sentences = text
+    .replace(/([.!?])\s+/g, '$1\n')
+    .split('\n')
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+  
+  let result = '';
+  
+  sentences.forEach(sentence => {
+    // Detect potential headers (short uppercase lines)
+    if (sentence === sentence.toUpperCase() && sentence.length < 80 && !sentence.includes('.')) {
+      result += `\n### ${sentence}\n\n`;
+    }
+    // Detect numbered items
+    else if (/^\d+[\.\)]\s/.test(sentence)) {
+      result += `${sentence}\n`;
+    }
+    // Detect bullet points
+    else if (/^[-•*]\s/.test(sentence)) {
+      result += `- ${sentence.slice(2).trim()}\n`;
+    }
+    // Regular paragraph
+    else {
+      result += `${sentence}\n\n`;
+    }
+  });
+  
+  return result.trim();
 }
 
 function traduzirAvisoMammoth(message: string): string {
