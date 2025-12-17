@@ -149,7 +149,7 @@
   }
   
   .markdown-preview {
-    @apply prose prose-green max-w-none;
+    @apply max-w-none;
   }
   
   .markdown-preview h1 {
