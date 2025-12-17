@@ -14,9 +14,11 @@ import {
   type ConversionLog,
 } from '@/lib/markdownConverter';
 
+const MAX_FILES = 5;
+
 const Index = () => {
   const { toast } = useToast();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [markdown, setMarkdown] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState<ConversionLog[]>([]);
@@ -37,51 +39,82 @@ const Index = () => {
     setLogs([]);
   }, []);
 
-  const handleFileSelect = useCallback(
-    async (file: File) => {
-      setSelectedFile(file);
+  const handleFilesSelect = useCallback(
+    async (newFiles: File[]) => {
+      const updatedFiles = [...selectedFiles, ...newFiles].slice(0, MAX_FILES);
+      setSelectedFiles(updatedFiles);
       setIsProcessing(true);
       clearLogs();
 
-      addLog({ type: 'info', message: `Iniciando conversão: ${file.name}` });
+      const allMarkdown: string[] = [];
+      let hasErrors = false;
+      let successCount = 0;
 
-      try {
-        const result = await convertToMarkdown(file, addLog);
+      addLog({ type: 'info', message: `Iniciando conversão de ${updatedFiles.length} arquivo(s)` });
 
-        if (result.success) {
-          setMarkdown(result.markdown);
-          toast({
-            title: 'Conversão concluída!',
-            description: 'Seu arquivo foi convertido para Markdown com sucesso.',
-          });
+      for (let i = 0; i < updatedFiles.length; i++) {
+        const file = updatedFiles[i];
+        addLog({ type: 'info', message: `[${i + 1}/${updatedFiles.length}] Processando: ${file.name}` });
 
-          if (result.warnings && result.warnings.length > 0) {
-            result.warnings.forEach((warning) => {
-              addLog({ type: 'warning', message: warning });
-            });
+        try {
+          const result = await convertToMarkdown(file, addLog);
+
+          if (result.success) {
+            allMarkdown.push(`## 📄 ${file.name}\n\n${result.markdown}`);
+            successCount++;
+
+            if (result.warnings && result.warnings.length > 0) {
+              result.warnings.forEach((warning) => {
+                addLog({ type: 'warning', message: `[${file.name}] ${warning}` });
+              });
+            }
+            addLog({ type: 'success', message: `[${file.name}] Conversão concluída` });
+          } else {
+            hasErrors = true;
+            addLog({ type: 'error', message: `[${file.name}] ${result.error || 'Erro na conversão'}` });
           }
-        } else {
-          setMarkdown('');
-          toast({
-            title: 'Erro na conversão',
-            description: result.error || 'Não foi possível converter o arquivo.',
-            variant: 'destructive',
-          });
+        } catch (error) {
+          hasErrors = true;
+          const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+          addLog({ type: 'error', message: `[${file.name}] ${errorMessage}` });
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-        addLog({ type: 'error', message: errorMessage });
+      }
+
+      if (allMarkdown.length > 0) {
+        setMarkdown(allMarkdown.join('\n\n---\n\n'));
+      } else {
+        setMarkdown('');
+      }
+
+      if (successCount > 0) {
         toast({
-          title: 'Erro',
-          description: errorMessage,
+          title: 'Conversão concluída!',
+          description: `${successCount} de ${updatedFiles.length} arquivo(s) convertido(s) com sucesso.`,
+        });
+      }
+
+      if (hasErrors && successCount === 0) {
+        toast({
+          title: 'Erro na conversão',
+          description: 'Nenhum arquivo pôde ser convertido.',
           variant: 'destructive',
         });
-      } finally {
-        setIsProcessing(false);
+      } else if (hasErrors) {
+        toast({
+          title: 'Conversão parcial',
+          description: 'Alguns arquivos não puderam ser convertidos. Verifique os logs.',
+          variant: 'destructive',
+        });
       }
+
+      setIsProcessing(false);
     },
-    [addLog, clearLogs, toast]
+    [selectedFiles, addLog, clearLogs, toast]
   );
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handleBinaryConvert = useCallback(
     (data: string, type: 'base64' | 'raw', sourceType: string) => {
@@ -125,12 +158,11 @@ const Index = () => {
     [addLog, clearLogs, toast]
   );
 
-  const handleClearFile = useCallback(() => {
-    setSelectedFile(null);
+  const handleClearFiles = useCallback(() => {
+    setSelectedFiles([]);
     setMarkdown('');
     clearLogs();
   }, [clearLogs]);
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -187,10 +219,12 @@ const Index = () => {
 
               <TabsContent value="file" className="mt-3 sm:mt-4">
                 <FileUpload
-                  onFileSelect={handleFileSelect}
+                  onFilesSelect={handleFilesSelect}
                   isProcessing={isProcessing}
-                  selectedFile={selectedFile}
-                  onClear={handleClearFile}
+                  selectedFiles={selectedFiles}
+                  onClear={handleClearFiles}
+                  onRemoveFile={handleRemoveFile}
+                  maxFiles={MAX_FILES}
                 />
               </TabsContent>
 
