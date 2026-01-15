@@ -322,17 +322,8 @@ Este projeto foi desenvolvido pelo **Estado de Goiás**.
 
 ## 👥 Equipe
 
-Desenvolvido com ❤️ pela equipe de tecnologia do **Estado de Goiás**.
+Desenvolvido pela equipe de tecnologia do **Estado de Goiás**.
 
----
-
-## 📞 Contato
-
-Dúvidas ou sugestões? Entre em contato:
-
-- 🌐 Website: [Em breve]
-- 📧 Email: [Em breve]
-- 💬 Issues: [Abra uma issue](../../issues)
 
 ---
 
